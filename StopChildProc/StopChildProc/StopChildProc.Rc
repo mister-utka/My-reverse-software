@@ -1,0 +1,3 @@
+#include "Res/StopChildProcMnu.rc"
+#include "Res/StopChildProcDlg.rc"
+#include "Res/StopChildProcRes.rc"
