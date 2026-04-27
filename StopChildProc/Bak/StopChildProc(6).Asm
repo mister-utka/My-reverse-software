@@ -4,13 +4,6 @@ option casemap:none
 
 include StopChildProc.inc
 
-RunThreadSearchProc PROTO :HWND
-GetSearchProc  		PROTO :HWND
-StopSearchProc		PROTO :HWND, :DWORD
-StopChildProc 		PROTO :HWND, :DWORD, :WORD
-FreezeProcess 		PROTO :DWORD
-CheckNumImput		PROTO :HWND, :DWORD
-
 .code
 
 start:
@@ -131,6 +124,13 @@ LOCAL hThread:HANDLE
 		.if edx==BN_CLICKED
 		
 			.if eax==IDC_BTN_FREEZ
+			
+				;Проверяем, что было введено имя процесса
+				invoke GetDlgItemText, hWin, IDC_EDT_GET_NAME_PROC, addr buffer, 512
+				.if eax==0
+					invoke MessageBox, hWin, addr pszInpurProcErr, addr pszError, MB_ICONWARNING
+					ret
+				.endif
 			
 				;Получаем задержку в мс, а так же проверяем ввод на корректность
 				invoke GetDlgItemText, hWin, IDC_EDT_SEARCH_FREQUENCY, addr SearchFrequency, 9
@@ -352,24 +352,21 @@ LOCAL flag:WORD					;0-процесс не был найден, 1-процесс был найден
 			;Замораживаем текущий процесс
 			invoke FreezeProcess, pe32.th32ProcessID
 			
+			jmp exit_loop
+			
 		.endif 
 		
 		;Получаем следующий процесс
 		invoke Process32Next, hSnap, addr pe32
 	.endw
 	
-	;Закрываем дескриптор снимка
-	invoke CloseHandle, hSnap
+
 	
 	;Процесс был найден
-	.if flag==1
-		xor eax,eax
+	exit_loop:
+		;Закрываем дескриптор снимка
+		invoke CloseHandle, hSnap
 		ret
-	;Процесс не был найден
-	.else
-		mov eax,1
-		ret
-	.endif
 
 StopSearchProc endp
 

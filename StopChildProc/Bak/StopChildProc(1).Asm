@@ -4,13 +4,6 @@ option casemap:none
 
 include StopChildProc.inc
 
-RunThreadSearchProc PROTO :HWND
-GetSearchProc  		PROTO :HWND
-StopSearchProc		PROTO :HWND, :DWORD
-StopChildProc 		PROTO :HWND, :DWORD, :WORD
-FreezeProcess 		PROTO :DWORD
-CheckNumImput		PROTO :HWND, :DWORD
-
 .code
 
 start:
@@ -307,7 +300,6 @@ StopSearchProc proc uses ebx edx ecx esi edi hWin:HWND, SearchProc:DWORD
 LOCAL hSnap:HANDLE
 LOCAL pe32:PROCESSENTRY32
 LOCAL InversionDepth:WORD		;глубина рекурсии, для кол-во tab в выводе
-LOCAL flag:WORD					;0-процесс не был найден, 1-процесс был найден
 	
 	;Создаем снимок всех процессов
 	invoke CreateToolhelp32Snapshot,TH32CS_SNAPPROCESS, 0
@@ -318,9 +310,6 @@ LOCAL flag:WORD					;0-процесс не был найден, 1-процесс был найден
 	
 	;Получаем первый процесс
 	invoke Process32First, hSnap, addr pe32
-	
-	;Обнуляем флаг нахождения процесса
-	mov flag, 0
 	
 	.while eax != FALSE
 		;pe32.szExeFile - имя, pe32.th32ProcessID - pid
@@ -333,7 +322,7 @@ LOCAL flag:WORD					;0-процесс не был найден, 1-процесс был найден
 		invoke lstrcmp, SearchProc, addr pe32.szExeFile
 		;Нашли искомый процесс
 		.if eax==0
-			mov flag, 1
+			;mov flag, 1
 			
 			;Задержка перед запуском потока на сканирование ри первом обнаружении
 			;Преобразовываем Ascii строку в число
@@ -359,24 +348,19 @@ LOCAL flag:WORD					;0-процесс не был найден, 1-процесс был найден
 			;Замораживаем текущий процесс
 			invoke FreezeProcess, pe32.th32ProcessID
 			
+			jmp exit_loop
+			
 		.endif 
 		
 		;Получаем следующий процесс
 		invoke Process32Next, hSnap, addr pe32
 	.endw
 	
-	;Закрываем дескриптор снимка
-	invoke CloseHandle, hSnap
-	
 	;Процесс был найден
-	.if flag==1
-		xor eax,eax
+	exit_loop:
+		;Закрываем дескриптор снимка
+		invoke CloseHandle, hSnap
 		ret
-	;Процесс не был найден
-	.else
-		mov eax,1
-		ret
-	.endif
 
 StopSearchProc endp
 
